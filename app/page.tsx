@@ -90,7 +90,7 @@ export default function Home() {
   const [trends, setTrends] = useState<TagTrend[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [hotPosts, setHotPosts] = useState<Post[]>([]);
-  const days = 7;
+  const days = 14;
   const [loading, setLoading] = useState(true);
   const [tagFilter, setTagFilter] = useState("");
   const [searchResults, setSearchResults] = useState<TagTrend[] | null>(null);
@@ -238,6 +238,16 @@ export default function Home() {
                 onPlay={tlPlay}
                 onPause={() => setTlPlaying(false)}
               />
+            </section>
+            )}
+
+            {/* Leaderboard - shows if timeline has no data */}
+            {!loading && tlSnapshots.length === 0 && trends.length > 0 && (
+            <section className="animate-fade-in-up" style={{ animationDelay: "250ms" }}>
+              <div className="bg-card rounded-lg shadow-sm p-4">
+                <SectionLabel icon={<BarChart3 className="h-4 w-4 text-primary" />} title="Чансаа" />
+                <div className="py-6 text-center text-sm text-muted-foreground">Мэдээлэл ачааллаж байна...</div>
+              </div>
             </section>
             )}
 
@@ -476,7 +486,7 @@ function SectionLabel({ icon, title }: { icon: React.ReactNode; title: string })
   );
 }
 
-/* ── Timeline Section ─── */
+/* ── Тойм мэдээ - Summary + Daily toggle ─── */
 function TimelineSection({
   snapshots,
   currentIndex,
@@ -492,136 +502,196 @@ function TimelineSection({
   onPlay: () => void;
   onPause: () => void;
 }) {
-  const current = snapshots[currentIndex];
-  const prev = currentIndex > 0 ? snapshots[currentIndex - 1] : null;
-  const prevRankMap = new Map<number, number>();
-  if (prev) {
-    for (const t of prev.tags) prevRankMap.set(t.id, t.rank);
+  const [view, setView] = useState<"summary" | "daily">("summary");
+
+  // === Summary view data ===
+  const tagHistory = new Map<number, { name: string; scores: number[]; totalPosts: number; totalNews: number; sentiment: number }>();
+  for (const snap of snapshots) {
+    for (const tag of snap.tags) {
+      if (!tagHistory.has(tag.id)) {
+        tagHistory.set(tag.id, { name: tag.name, scores: new Array(snapshots.length).fill(0), totalPosts: 0, totalNews: 0, sentiment: 0 });
+      }
+      const h = tagHistory.get(tag.id)!;
+      h.scores[snapshots.indexOf(snap)] = tag.score;
+      h.totalPosts += tag.postCount;
+      h.totalNews += tag.newsCount;
+      h.sentiment = tag.sentiment ?? h.sentiment;
+    }
   }
+
+  const ranked = Array.from(tagHistory.entries())
+    .map(([id, h]) => ({
+      id, ...h,
+      weightedScore: h.scores.reduce((sum, s, i) => sum + s * ((i + 1) / snapshots.length), 0),
+    }))
+    .sort((a, b) => b.weightedScore - a.weightedScore)
+    .slice(0, 12);
+
+  const getTrend = (scores: number[]) => {
+    if (scores.length < 4) return "stable";
+    const recent = scores.slice(-3).reduce((a, b) => a + b, 0) / 3;
+    const prev = scores.slice(-6, -3).reduce((a, b) => a + b, 0) / 3;
+    if (prev === 0 && recent > 0) return "rising";
+    if (recent > prev * 1.3) return "rising";
+    if (recent < prev * 0.5) return "falling";
+    return "stable";
+  };
+
+  // === Daily view data (last 7 days only) ===
+  const dailySnapshots = snapshots.slice(-7);
+  const dailyIndex = Math.min(currentIndex - Math.max(0, snapshots.length - 7), dailySnapshots.length - 1);
+  const safeDailyIndex = Math.max(0, Math.min(dailyIndex, dailySnapshots.length - 1));
+  const current = dailySnapshots[safeDailyIndex];
+  const prev = safeDailyIndex > 0 ? dailySnapshots[safeDailyIndex - 1] : null;
+  const prevRankMap = new Map<number, number>();
+  if (prev) for (const t of prev.tags) prevRankMap.set(t.id, t.rank);
 
   return (
     <div className="bg-card rounded-lg shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center mb-3">
+        {/* Left - title */}
         <SectionLabel icon={<Clock className="h-4 w-4 text-primary" />} title="Тойм мэдээ" />
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-            disabled={currentIndex <= 0}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary hover:bg-border disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => playing ? onPause() : onPlay()}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:bg-primary/90 transition-colors"
-          >
-            {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
-          </button>
-          <button
-            onClick={() => setCurrentIndex(Math.min(snapshots.length - 1, currentIndex + 1))}
-            disabled={currentIndex >= snapshots.length - 1}
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary hover:bg-border disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
+
+        {/* Center - toggle */}
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center gap-0.5 bg-secondary rounded-full p-0.5">
+            <button onClick={() => setView("summary")}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${view === "summary" ? "bg-primary text-white" : "text-muted-foreground"}`}>
+              Тойм
+            </button>
+            <button onClick={() => setView("daily")}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors ${view === "daily" ? "bg-primary text-white" : "text-muted-foreground"}`}>
+              Өдрөөр
+            </button>
+          </div>
+        </div>
+
+        {/* Right - fixed width to prevent layout shift */}
+        <div className="flex items-center gap-1.5 w-[100px] justify-end">
+          {view === "daily" ? (
+            <>
+              <button onClick={() => setCurrentIndex(Math.max(0, snapshots.length - 7))}
+                disabled={safeDailyIndex <= 0}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary hover:bg-border disabled:opacity-30 transition-colors">
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={() => playing ? onPause() : onPlay()}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-primary text-white hover:bg-primary/90 transition-colors">
+                {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
+              </button>
+              <button onClick={() => setCurrentIndex(Math.min(snapshots.length - 1, (snapshots.length - 7) + safeDailyIndex + 1))}
+                disabled={safeDailyIndex >= dailySnapshots.length - 1}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-secondary hover:bg-border disabled:opacity-30 transition-colors">
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </>
+          ) : (
+            <span className="text-[11px] text-muted-foreground">{snapshots.length} хоног</span>
+          )}
         </div>
       </div>
 
-      {/* Day selector */}
-      <div className="flex gap-1 mb-3">
-        {snapshots.map((snap, i) => {
-          const isActive = i === currentIndex;
-          const isPast = i < currentIndex;
-          return (
-            <button
-              key={snap.date}
-              onClick={() => setCurrentIndex(i)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md transition-all text-center ${
-                isActive
-                  ? "bg-primary/15 ring-1 ring-primary/30"
-                  : isPast
-                  ? "bg-primary/5 hover:bg-primary/10"
-                  : "hover:bg-secondary"
-              }`}
-            >
-              <span className={`text-[10px] ${isActive ? "text-primary font-bold" : "text-muted-foreground"}`}>
-                {["Ня", "Да", "Мя", "Лх", "Пү", "Ба", "Бя"][new Date(snap.date + "T00:00:00Z").getUTCDay()]}
-              </span>
-              <span className={`text-[13px] font-semibold tabular-nums ${isActive ? "text-primary" : "text-foreground/70"}`}>
-                {new Date(snap.date + "T00:00:00Z").getUTCDate()}
-              </span>
-              <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-primary" : isPast ? "bg-primary/30" : "bg-border"}`} />
-            </button>
-          );
-        })}
-      </div>
+      {view === "summary" ? (
+        /* === SUMMARY VIEW === */
+        <div className="space-y-1">
+          {ranked.map((tag, i) => {
+            const maxScore = ranked[0]?.weightedScore || 1;
+            const pct = (tag.weightedScore / maxScore) * 100;
+            const trend = getTrend(tag.scores);
+            const sent = tag.sentiment ?? 0;
+            const sentIcon = sent > 0.2 ? "👍" : sent < -0.2 ? "👎" : "💬";
+            const barFill = sent > 0.2 ? "bg-[#e6f4ea] dark:bg-[#1a8b3f]/25" : sent < -0.2 ? "bg-[#fce8e6] dark:bg-[#c0392b]/25" : "bg-[#8b8d91]/10 dark:bg-[#8b8d91]/15";
+            const sparkW = 56, sparkH = 18;
+            const maxS = Math.max(...tag.scores, 1);
+            const points = tag.scores.map((s, j) => `${(j / (tag.scores.length - 1)) * sparkW},${sparkH - (s / maxS) * sparkH}`).join(" ");
+            const sparkColor = trend === "rising" ? "#22c55e" : trend === "falling" ? "#ef4444" : "#8b8d91";
 
-      {/* Ranked list */}
-      <div className="space-y-1">
-        {current?.tags.map((tag) => {
-          const prevRank = prevRankMap.get(tag.id);
-          const isNew = prev && prevRank === undefined;
-          const rankChange = prevRank !== undefined ? prevRank - tag.rank : 0;
-          const maxScore = current.tags[0]?.score || 1;
-          const pct = (tag.score / maxScore) * 100;
-
-          const sent = tag.sentiment ?? 0;
-          const isPositive = sent > 0.2;
-          const isNegative = sent < -0.2;
-          const barFill = isPositive
-            ? "bg-[#e6f4ea] dark:bg-[#1a8b3f]/25"
-            : isNegative
-            ? "bg-[#fce8e6] dark:bg-[#c0392b]/25"
-            : "bg-[#8b8d91]/10 dark:bg-[#8b8d91]/15";
-          const sentIcon = isPositive ? "👍" : isNegative ? "👎" : "💬";
-
-          return (
-            <Link key={tag.id} href={`/tag/${tag.id}`} className="group block">
-              <div className="relative flex items-center h-9 rounded-md overflow-hidden">
-                <div
-                  className={`absolute left-0 top-0 bottom-0 ${barFill} transition-all duration-500 ease-out`}
-                  style={{ width: `${pct}%` }}
-                />
-                <div className="relative z-10 flex items-center w-full px-2.5">
-                  <span className={`text-[12px] font-bold tabular-nums w-5 text-center ${
-                    tag.rank <= 3 ? "text-primary" : "text-muted-foreground"
-                  }`}>{tag.rank}</span>
-
-                  <div className="w-6 flex items-center justify-center ml-1">
-                    {isNew ? (
-                      <span className="text-[8px] font-bold text-emerald-500 bg-emerald-500/10 px-1 rounded">NEW</span>
-                    ) : rankChange > 0 ? (
-                      <span className="flex items-center text-emerald-500">
-                        <TrendingUp className="h-3 w-3" />
-                        <span className="text-[9px] font-bold">{rankChange}</span>
-                      </span>
-                    ) : rankChange < 0 ? (
-                      <span className="flex items-center text-red-400">
-                        <TrendingDown className="h-3 w-3" />
-                        <span className="text-[9px] font-bold">{Math.abs(rankChange)}</span>
-                      </span>
-                    ) : (
-                      <Minus className="h-3 w-3 text-muted-foreground/20" />
-                    )}
-                  </div>
-
-                  <span className="text-[13px] font-semibold text-foreground group-hover:text-primary transition-colors truncate flex-1 ml-1">
-                    {sentIcon} {tag.name}
-                  </span>
-
-                  <div className="flex items-center gap-2 ml-2 shrink-0">
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{tag.postCount}p</span>
-                    <span className="text-[11px] font-bold tabular-nums text-foreground/60">{tag.score.toFixed(1)}</span>
+            return (
+              <Link key={tag.id} href={`/tag/${tag.id}`} className="group block">
+                <div className="relative flex items-center h-10 rounded-md overflow-hidden">
+                  <div className={`absolute left-0 top-0 bottom-0 ${barFill} animate-bar-grow`} style={{ width: `${pct}%`, animationDelay: `${100 + i * 40}ms` }} />
+                  <div className="relative z-10 flex items-center w-full px-2.5">
+                    <span className={`text-[12px] font-bold tabular-nums w-5 text-center ${i < 3 ? "text-primary" : "text-muted-foreground"}`}>{i + 1}</span>
+                    <div className="w-5 flex items-center justify-center ml-1">
+                      {trend === "rising" ? <TrendingUp className="h-3 w-3 text-emerald-500" /> : trend === "falling" ? <TrendingDown className="h-3 w-3 text-red-400" /> : <Minus className="h-3 w-3 text-muted-foreground/20" />}
+                    </div>
+                    <span className="text-[13px] font-semibold text-foreground group-hover:text-primary transition-colors truncate flex-1 ml-1.5">{sentIcon} {tag.name}</span>
+                    <svg width={sparkW} height={sparkH} className="shrink-0 ml-2">
+                      <polyline points={points} fill="none" stroke={sparkColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <div className="flex items-center gap-2 ml-2 shrink-0">
+                      {tag.totalNews > 0 && <span className="text-[10px] text-[#f5a623] tabular-nums flex items-center gap-0.5"><Newspaper className="h-2.5 w-2.5" />{tag.totalNews}</span>}
+                      <span className="text-[11px] text-muted-foreground tabular-nums">{tag.totalPosts}p</span>
+                      <span className="text-[11px] font-bold tabular-nums text-foreground/60">{tag.weightedScore.toFixed(1)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
-        {current?.tags.length === 0 && (
-          <div className="py-6 text-center text-sm text-muted-foreground">Энэ өдөр мэдээлэл алга</div>
-        )}
-      </div>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        /* === DAILY VIEW === */
+        <>
+          <div className="flex gap-1 mb-3">
+            {dailySnapshots.map((snap, i) => {
+              const isActive = i === safeDailyIndex;
+              const isPast = i < safeDailyIndex;
+              const d = new Date(snap.date + "T00:00:00Z");
+              const globalIdx = snapshots.length - 7 + i;
+              return (
+                <button key={snap.date} onClick={() => setCurrentIndex(Math.max(0, globalIdx))}
+                  className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-md transition-all text-center ${
+                    isActive ? "bg-primary/15 ring-1 ring-primary/30" : isPast ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-secondary"
+                  }`}>
+                  <span className={`text-[10px] ${isActive ? "text-primary font-bold" : "text-muted-foreground"}`}>
+                    {["Ня", "Да", "Мя", "Лх", "Пү", "Ба", "Бя"][d.getUTCDay()]}
+                  </span>
+                  <span className={`text-[13px] font-semibold tabular-nums ${isActive ? "text-primary" : "text-foreground/70"}`}>
+                    {d.getUTCDate()}
+                  </span>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-primary" : isPast ? "bg-primary/30" : "bg-border"}`} />
+                </button>
+              );
+            })}
+          </div>
+          <div className="space-y-1">
+            {current?.tags.map((tag) => {
+              const prevRank = prevRankMap.get(tag.id);
+              const isNew = prev && prevRank === undefined;
+              const rankChange = prevRank !== undefined ? prevRank - tag.rank : 0;
+              const maxScore = current.tags[0]?.score || 1;
+              const pct = (tag.score / maxScore) * 100;
+              const sent = tag.sentiment ?? 0;
+              const barFill = sent > 0.2 ? "bg-[#e6f4ea] dark:bg-[#1a8b3f]/25" : sent < -0.2 ? "bg-[#fce8e6] dark:bg-[#c0392b]/25" : "bg-[#8b8d91]/10 dark:bg-[#8b8d91]/15";
+              const sentIcon = sent > 0.2 ? "👍" : sent < -0.2 ? "👎" : "💬";
+
+              return (
+                <Link key={tag.id} href={`/tag/${tag.id}`} className="group block">
+                  <div className="relative flex items-center h-9 rounded-md overflow-hidden">
+                    <div className={`absolute left-0 top-0 bottom-0 ${barFill} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                    <div className="relative z-10 flex items-center w-full px-2.5">
+                      <span className={`text-[12px] font-bold tabular-nums w-5 text-center ${tag.rank <= 3 ? "text-primary" : "text-muted-foreground"}`}>{tag.rank}</span>
+                      <div className="w-6 flex items-center justify-center ml-1">
+                        {isNew ? <span className="text-[8px] font-bold text-emerald-500 bg-emerald-500/10 px-1 rounded">NEW</span>
+                          : rankChange > 0 ? <span className="flex items-center text-emerald-500"><TrendingUp className="h-3 w-3" /><span className="text-[9px] font-bold">{rankChange}</span></span>
+                          : rankChange < 0 ? <span className="flex items-center text-red-400"><TrendingDown className="h-3 w-3" /><span className="text-[9px] font-bold">{Math.abs(rankChange)}</span></span>
+                          : <Minus className="h-3 w-3 text-muted-foreground/20" />}
+                      </div>
+                      <span className="text-[13px] font-semibold text-foreground group-hover:text-primary transition-colors truncate flex-1 ml-1">{sentIcon} {tag.name}</span>
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        <span className="text-[11px] text-muted-foreground tabular-nums">{tag.postCount}p</span>
+                        <span className="text-[11px] font-bold tabular-nums text-foreground/60">{tag.score.toFixed(1)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+            {current?.tags.length === 0 && <div className="py-6 text-center text-sm text-muted-foreground">Энэ өдөр мэдээлэл алга</div>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
