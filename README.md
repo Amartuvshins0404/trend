@@ -1,27 +1,27 @@
-# Цаагуур — Mongolia Trend Analytics
+# Цаагуур - Mongolia Trend Analytics
 
-Real-time trending topics dashboard for Mongolia. Aggregates Facebook posts and news articles from 11 Mongolian news sites, tags them with AI, and visualizes what's trending with velocity scoring.
+Real-time trending topics dashboard for Mongolia. Monitors Mongolian social media and news, visualizes what's trending with velocity scoring and sentiment analysis.
 
 **Live:** [trend.byamb4.dev](https://trend.byamb4.dev)
 
 ## Features
 
-- **Trending Topics** — AI-tagged topics ranked by velocity (rising/falling/stable)
-- **Timeline Scrubber** — scrub through 7 days of rankings, see how topics rise and fall
-- **Network Graph** — bubble chart + force graph showing topic relationships
-- **News Feed** — latest news articles from 11 Mongolian news sites
-- **Daily Digest** — AI-generated Mongolian trend summary
-- **Sentiment Analysis** — positive/negative/neutral per topic
-- **Tag Detail Pages** — deep dive into any topic with posts, news, engagement charts
-- **Dark Mode** — full dark/light theme support
+- **Trending Topics** - topics ranked by velocity (rising/falling/stable)
+- **Timeline Scrubber** - scrub through 7 days of rankings, see how topics rise and fall
+- **Network Graph** - bubble chart + force graph showing topic relationships
+- **News Feed** - latest news articles from Mongolian news sites
+- **Daily Digest** - daily trend summary in Mongolian
+- **Sentiment Analysis** - positive/negative/neutral per topic
+- **Tag Detail Pages** - deep dive into any topic with posts, news, engagement charts
+- **Dark Mode** - full dark/light theme support
 
 ## Tech Stack
 
-- **Next.js 16** — App Router, React 19, Turbopack
-- **Tailwind CSS v4** — styling
-- **Recharts** — charts
-- **D3-Force** — network visualization
-- **Canvas API** — bubble chart rendering
+- **Next.js 16** - App Router, React 19, Turbopack
+- **Tailwind CSS v4** - styling
+- **Recharts** - charts
+- **D3-Force** - network visualization
+- **Canvas API** - bubble chart rendering
 
 ## Getting Started
 
@@ -33,7 +33,7 @@ pnpm install
 pnpm dev
 ```
 
-Open [localhost:3000](http://localhost:3000). The app runs with mock data — no backend needed.
+Open [localhost:3000](http://localhost:3000). The app runs with mock data, no backend needed.
 
 ### Connect to a real backend
 
@@ -49,7 +49,7 @@ Then replace `app/api/[...path]/route.ts` with a proxy to your backend.
 
 ```
 app/
-  page.tsx              # Homepage — hot topics, timeline, trending posts
+  page.tsx              # Homepage - hot topics, timeline, trending posts
   network/              # Bubble chart + force graph
   news/                 # News articles feed
   compare/              # Tag comparison
@@ -76,7 +76,7 @@ lib/
 
 ## Contributing
 
-Contributions welcome! This repo contains the **frontend only**. The backend (scrapers, AI tagging, data pipeline) is private.
+Contributions welcome! This repo contains the **frontend only**.
 
 ### What you can contribute
 
@@ -98,22 +98,11 @@ Contributions welcome! This repo contains the **frontend only**. The backend (sc
 
 ### Guidelines
 
-- Use Tailwind CSS — no custom CSS files
+- Use Tailwind CSS, no custom CSS files
 - Follow existing component patterns
 - UI text should be in **Mongolian**
 - Test in both dark and light mode
 - No `lang="mn"` on the html tag
-
-## Screenshots
-
-### Homepage
-Trending topics with timeline scrubber, hot posts, and sidebar.
-
-### Network
-Interactive bubble chart showing topic relationships.
-
-### Tag Detail
-Deep dive into a topic with engagement charts and related posts.
 
 ## License
 
@@ -121,4 +110,4 @@ MIT
 
 ## Author
 
-**ByamB4** — [instagram.com/byamb4](https://instagram.com/byamb4)
+**ByamB4** - [instagram.com/byamb4](https://instagram.com/byamb4)
