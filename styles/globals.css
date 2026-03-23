@@ -1,0 +1,312 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+a, button {
+  cursor: pointer;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design System: "Social Insight"
+ * Facebook-ecosystem aligned analytics dashboard
+ *
+ * Personality: Familiar, social, approachable, clean, trustworthy, readable
+ * Blue is accent, not dominant. Warm grays carry the structure.
+ * Cards are white on warm gray — Facebook's signature layering.
+ * Rounding is medium (8px) — social-product native, not enterprise.
+ */
+
+/* ── Light theme ────────────────────────────── */
+:root {
+  --background: #f0f2f5;
+  --foreground: #1c1e21;
+  --card: #ffffff;
+  --card-foreground: #1c1e21;
+  --primary: #1877f2;
+  --primary-foreground: #ffffff;
+  --secondary: #e4e6eb;
+  --secondary-foreground: #606770;
+  --muted: #e4e6eb;
+  --muted-foreground: #65676b;
+  --accent: #1877f2;
+  --accent-foreground: #ffffff;
+  --destructive: #e74c3c;
+  --border: #dddfe2;
+  --input: #f0f2f5;
+  --ring: #1877f2;
+  --radius: 0.5rem;
+  --glow: rgba(24, 119, 242, 0.06);
+
+  --green: #31a24c;
+  --red: #e74c3c;
+  --warning: #f5a623;
+  --info: #1877f2;
+  --elevated: #ffffff;
+
+  /* Facebook-specific accent tones */
+  --blue-soft: #e7f3ff;
+  --blue-hover: #1a6ddb;
+  --blue-pressed: #165db5;
+  --hover-surface: #f2f3f5;
+  --selected-surface: #e7f3ff;
+  --active-surface: #dae8fc;
+}
+
+/* ── Dark theme ─────────────────────────────── */
+.dark {
+  --background: #18191a;
+  --foreground: #e4e6eb;
+  --card: #242526;
+  --card-foreground: #e4e6eb;
+  --primary: #2d88ff;
+  --primary-foreground: #ffffff;
+  --secondary: #3a3b3c;
+  --secondary-foreground: #b0b3b8;
+  --muted: #3a3b3c;
+  --muted-foreground: #8a8d91;
+  --accent: #2d88ff;
+  --accent-foreground: #ffffff;
+  --destructive: #f0625e;
+  --border: #3e4042;
+  --input: #3a3b3c;
+  --ring: #2d88ff;
+  --glow: rgba(45, 136, 255, 0.08);
+
+  --green: #45bd62;
+  --red: #f0625e;
+  --warning: #f5a623;
+  --info: #2d88ff;
+  --elevated: #2f3031;
+
+  --blue-soft: rgba(45, 136, 255, 0.1);
+  --blue-hover: #3d93ff;
+  --blue-pressed: #2478e0;
+  --hover-surface: #303132;
+  --selected-surface: rgba(45, 136, 255, 0.12);
+  --active-surface: rgba(45, 136, 255, 0.18);
+}
+
+@theme inline {
+  --font-sans: 'Nunito Variable', 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --font-display: 'Nunito Variable', 'Nunito', system-ui, -apple-system, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ── Animations ─────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes barGrow {
+  from { width: 0%; }
+}
+@keyframes number-pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  60% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in {
+  animation: fadeIn 0.35s ease both;
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-bar-grow {
+  animation: barGrow 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-number-pop {
+  animation: number-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/*
+ * Facebook card treatment:
+ * Light: white card on #f0f2f5, light shadow, NO visible border
+ * Dark: #242526 card on #18191a, border only, no shadow
+ */
+.glass-card {
+  position: relative;
+  background: var(--card);
+  border-radius: 8px;
+  transition: background 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.glass-card:hover {
+  background: var(--hover-surface);
+}
+.dark .glass-card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+.dark .glass-card:hover {
+  background: var(--hover-surface);
+}
+
+/* ── Glow card — kept minimal for Facebook feel ── */
+.glow-card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Skeleton ─────────────────────────────── */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--secondary) 25%, var(--border) 50%, var(--secondary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Recharts ───────────────────────────────── */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--border);
+  opacity: 0.5;
+}
+.recharts-tooltip-wrapper {
+  filter: drop-shadow(0 2px 12px rgba(0,0,0,0.1));
+}
+.dark .recharts-tooltip-wrapper {
+  filter: drop-shadow(0 4px 20px rgba(0,0,0,0.5));
+}
+
+/* ── Selection — blue tint ─────────────────── */
+::selection {
+  background: rgba(24, 119, 242, 0.15);
+}
+.dark ::selection {
+  background: rgba(45, 136, 255, 0.25);
+}
+
+/* ── Rank badges ──────────────────────────── */
+.rank-gold { background: linear-gradient(135deg, #ffc94d, #f5a623); color: #451a03; }
+.rank-silver { background: linear-gradient(135deg, #d1d5db, #a3a3a3); color: #374151; }
+.rank-bronze { background: linear-gradient(135deg, #fdba74, #f5a623); color: #431407; }
+
+.dark .rank-gold { background: linear-gradient(135deg, #f5a623, #c68400); color: #18191a; }
+.dark .rank-silver { background: linear-gradient(135deg, #8a8d91, #6d6f73); color: #e4e6eb; }
+.dark .rank-bronze { background: linear-gradient(135deg, #c2702a, #9a5a22); color: #18191a; }
+
+/* ── Live dot ─────────────────────────────── */
+.live-dot {
+  position: relative;
+}
+.live-dot::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 6px;
+  height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Volume bar ───────────────────────────── */
+.volume-bar {
+  position: relative;
+  overflow: hidden;
+}
+.volume-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%);
+  animation: shimmer 4s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+
+/* ── Focus ring — Facebook blue ─────────── */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px rgba(24, 119, 242, 0.3);
+}
+.dark input:focus, .dark select:focus, .dark textarea:focus {
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px rgba(45, 136, 255, 0.3);
+}
+
+/* ── Status badges — soft social tones ───── */
+.badge-success { background: #e6f4ea; color: #1a7431; }
+.badge-warning { background: #fef3cd; color: #856404; }
+.badge-error { background: #fce8e6; color: #a61d17; }
+.badge-info { background: #e7f3ff; color: #1261c4; }
+
+.dark .badge-success { background: rgba(69, 189, 98, 0.12); color: #69db7c; }
+.dark .badge-warning { background: rgba(245, 166, 35, 0.12); color: #ffc94d; }
+.dark .badge-error { background: rgba(240, 98, 94, 0.12); color: #ff8787; }
+.dark .badge-info { background: rgba(45, 136, 255, 0.12); color: #74b9ff; }
