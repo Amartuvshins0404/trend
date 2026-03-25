@@ -20,6 +20,8 @@ interface GNode extends SimulationNodeDatum {
 }
 interface GLink extends SimulationLinkDatum<GNode> { weight: number }
 
+const MAX_NODES = 150;
+
 export default function ForceGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,6 +38,8 @@ export default function ForceGraph() {
   const selectedRef = useRef<GNode | null>(null);
   const rafRef = useRef(0);
   const sizeRef = useRef({ w: 0, h: 0 });
+  const settledRef = useRef(false);
+  const lastMoveRef = useRef(0);
 
   // Only these two cause re-renders (for the overlay UI)
   const [selectedForUI, setSelectedForUI] = useState<GNode | null>(null);
@@ -93,10 +97,21 @@ export default function ForceGraph() {
 
     const isDark = themeRef.current === "dark";
 
+    // Viewport culling bounds (world-space)
+    const padding = 50;
+    const viewMinX = -t.x / t.k - padding;
+    const viewMaxX = (w - t.x) / t.k + padding;
+    const viewMinY = -t.y / t.k - padding;
+    const viewMaxY = (h - t.y) / t.k + padding;
+
     // Edges
     for (const link of links) {
       const s = link.source as GNode, tg = link.target as GNode;
       if (s.x == null || tg.x == null) continue;
+      // Skip if BOTH endpoints are off-screen
+      const sOff = s.x < viewMinX || s.x > viewMaxX || s.y! < viewMinY || s.y! > viewMaxY;
+      const tOff = tg.x < viewMinX || tg.x > viewMaxX || tg.y! < viewMinY || tg.y! > viewMaxY;
+      if (sOff && tOff) continue;
       const hi = hov != null && (hov === s.id || hov === tg.id);
       ctx.beginPath();
       ctx.moveTo(s.x, s.y!);
@@ -111,6 +126,7 @@ export default function ForceGraph() {
     // Nodes
     for (const node of nodes) {
       if (node.x == null) continue;
+      if (node.x! < viewMinX || node.x! > viewMaxX || node.y! < viewMinY || node.y! > viewMaxY) continue;
       const c = getCategoryStyle(node.category);
       const active = hov === node.id || sel?.id === node.id;
       const r = node.radius;
@@ -178,8 +194,9 @@ export default function ForceGraph() {
     sizeRef.current = { w, h };
     transformRef.current = { x: w / 2, y: h / 2, k: 0.85 };
 
-    const maxP = Math.max(...data.nodes.map((n) => n.postCount), 1);
-    const nodes: GNode[] = data.nodes.map((n) => ({ ...n, radius: 10 + (n.postCount / maxP) * 30 }));
+    const sorted = [...data.nodes].sort((a, b) => b.postCount - a.postCount).slice(0, MAX_NODES);
+    const maxP = Math.max(...sorted.map((n) => n.postCount), 1);
+    const nodes: GNode[] = sorted.map((n) => ({ ...n, radius: 10 + (n.postCount / maxP) * 30 }));
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const links: GLink[] = data.edges
       .filter((e) => nodeMap.has(e.source) && nodeMap.has(e.target))
@@ -192,6 +209,8 @@ export default function ForceGraph() {
 
     if (simRef.current) simRef.current.stop();
 
+    settledRef.current = false;
+
     const sim = forceSimulation<GNode>(nodes)
       .force("link", forceLink<GNode, GLink>(links).id((d) => d.id).distance(120).strength(0.2))
       .force("charge", forceManyBody().strength(-250))
@@ -199,11 +218,13 @@ export default function ForceGraph() {
       .force("x", forceX(0).strength(0.03))
       .force("y", forceY(0).strength(0.03))
       .force("collide", forceCollide<GNode>().radius((d) => d.radius + 8).strength(0.7))
-      .alphaDecay(0.02)
+      .alphaDecay(0.05)
+      .alphaMin(0.01)
       .on("tick", () => {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = requestAnimationFrame(draw);
-      });
+      })
+      .on("end", () => { settledRef.current = true; });
 
     simRef.current = sim;
     return () => { sim.stop(); cancelAnimationFrame(rafRef.current); };
@@ -228,6 +249,7 @@ export default function ForceGraph() {
       dragRef.current = { node, moved: false, panStart: null };
       node.fx = node.x;
       node.fy = node.y;
+      settledRef.current = false;
       simRef.current?.alphaTarget(0.3).restart();
     } else {
       const t = transformRef.current;
@@ -256,6 +278,11 @@ export default function ForceGraph() {
       redraw();
       return;
     }
+
+    // Throttle hover detection to ~30fps
+    const now = performance.now();
+    if (now - lastMoveRef.current < 33) return;
+    lastMoveRef.current = now;
 
     // Hover
     const node = findNodeAt(p.x, p.y);

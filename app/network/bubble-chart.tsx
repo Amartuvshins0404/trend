@@ -41,6 +41,9 @@ export default function BubbleChart() {
   const panRef = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0 });
   const viewRef = useRef({ x: 0, y: 0, scale: 1 });
   const rafRef = useRef(0);
+  const settledRef = useRef(false);
+  const adjacencyRef = useRef<Map<number, Set<number>>>(new Map());
+  const lastMoveRef = useRef(0);
   const sizeRef = useRef({ w: 0, h: 0 });
   const [loading, setLoading] = useState(true);
   const [hovered, setHovered] = useState<BNode | null>(null);
@@ -73,23 +76,31 @@ export default function BubbleChart() {
     const dragNode = dragRef.current.node;
     const activeId = dragNode?.id ?? hov;
 
-    // Build connected set for active node
+    // Build connected set for active node (from pre-computed adjacency map)
     const connectedIds = new Set<number>();
     if (activeId !== null) {
       connectedIds.add(activeId);
-      for (const link of links) {
-        const s = link.source as BNode;
-        const t = link.target as BNode;
-        if (s.id === activeId) connectedIds.add(t.id);
-        if (t.id === activeId) connectedIds.add(s.id);
-      }
+      const neighbors = adjacencyRef.current.get(activeId);
+      if (neighbors) for (const id of neighbors) connectedIds.add(id);
     }
+
+    // Viewport culling bounds
+    const padding = 50;
+    const viewMinX = -(view.x + w / 2) / view.scale - padding;
+    const viewMaxX = (w / 2 - view.x) / view.scale + padding;
+    const viewMinY = -(view.y + h / 2) / view.scale - padding;
+    const viewMaxY = (h / 2 - view.y) / view.scale + padding;
 
     // Lines BEHIND bubbles — draw first
     for (const link of links) {
       const s = link.source as BNode;
       const t = link.target as BNode;
       if (s.x == null || t.x == null) continue;
+      // Skip edges where both endpoints are off-screen
+      if (
+        (s.x! < viewMinX || s.x! > viewMaxX || s.y! < viewMinY || s.y! > viewMaxY) &&
+        (t.x! < viewMinX || t.x! > viewMaxX || t.y! < viewMinY || t.y! > viewMaxY)
+      ) continue;
       const isHighlighted = activeId !== null && (activeId === s.id || activeId === t.id);
       ctx.beginPath();
       ctx.moveTo(s.x, s.y!);
@@ -104,6 +115,7 @@ export default function BubbleChart() {
     // Bubbles ON TOP
     for (const node of nodes) {
       if (node.x == null) continue;
+      if (node.x! < viewMinX || node.x! > viewMaxX || node.y! < viewMinY || node.y! > viewMaxY) continue;
       const isActive = node.id === activeId;
       const isConnected = connectedIds.has(node.id);
       const dimmed = activeId !== null && !isActive && !isConnected;
@@ -213,8 +225,20 @@ export default function BubbleChart() {
       nodesRef.current = nodes;
       linksRef.current = links;
 
+      // Pre-compute adjacency map for O(1) neighbor lookups
+      const adjacency = new Map<number, Set<number>>();
+      for (const link of links) {
+        const s = (link.source as BNode).id, t = (link.target as BNode).id;
+        if (!adjacency.has(s)) adjacency.set(s, new Set());
+        if (!adjacency.has(t)) adjacency.set(t, new Set());
+        adjacency.get(s)!.add(t);
+        adjacency.get(t)!.add(s);
+      }
+      adjacencyRef.current = adjacency;
+
       // D3 force simulation
       if (simRef.current) simRef.current.stop();
+      settledRef.current = false;
       const sim = forceSimulation<BNode>(nodes)
         .force("link", forceLink<BNode, BLink>(links).id(d => d.id).distance(100).strength(0.15))
         .force("charge", forceManyBody().strength(-120))
@@ -222,11 +246,13 @@ export default function BubbleChart() {
         .force("x", forceX(0).strength(0.02))
         .force("y", forceY(0).strength(0.02))
         .force("collide", forceCollide<BNode>().radius(d => d.r + 6).strength(0.8))
-        .alphaDecay(0.02)
+        .alphaDecay(0.05)
+        .alphaMin(0.01)
         .on("tick", () => {
           cancelAnimationFrame(rafRef.current);
           rafRef.current = requestAnimationFrame(draw);
-        });
+        })
+        .on("end", () => { settledRef.current = true; });
 
       simRef.current = sim;
 
@@ -311,6 +337,11 @@ export default function BubbleChart() {
               canvasRef.current!.style.cursor = "grabbing";
               return;
             }
+            // Throttle hover redraws to ~30fps
+            const now = performance.now();
+            if (now - lastMoveRef.current < 33) return;
+            lastMoveRef.current = now;
+
             const node = findNode(e);
             const prev = hoveredRef.current;
             hoveredRef.current = node?.id ?? null;
