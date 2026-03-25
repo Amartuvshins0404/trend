@@ -9,6 +9,7 @@ import {
 } from "d3-force";
 import { Header } from "@/components/header";
 import { useTheme } from "@/components/theme-provider";
+import { CATEGORY_STYLES, getCategoryStyle } from "@/lib/constants";
 import { ZoomIn, ZoomOut, Maximize2, GripHorizontal } from "lucide-react";
 
 interface ApiNode { id: number; name: string; category: string | null; postCount: number }
@@ -18,13 +19,6 @@ interface GNode extends SimulationNodeDatum {
   fx?: number | null; fy?: number | null;
 }
 interface GLink extends SimulationLinkDatum<GNode> { weight: number }
-
-const CAT_COLORS: Record<string, { fill: string; label: string }> = {
-  topic:    { fill: "#4599ff", label: "Сэдэв" },
-  entity:   { fill: "#34d399", label: "Нэр" },
-  location: { fill: "#fbbf24", label: "Газар" },
-};
-const DEF = { fill: "#94a3b8", label: "Бусад" };
 
 export default function ForceGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,7 +111,7 @@ export default function ForceGraph() {
     // Nodes
     for (const node of nodes) {
       if (node.x == null) continue;
-      const c = CAT_COLORS[node.category || ""] || DEF;
+      const c = getCategoryStyle(node.category);
       const active = hov === node.id || sel?.id === node.id;
       const r = node.radius;
 
@@ -394,8 +388,8 @@ export default function ForceGraph() {
                     <h3 className="text-base font-semibold text-foreground">{selectedForUI.name}</h3>
                     {selectedForUI.category && (
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 inline-block"
-                        style={{ backgroundColor: (CAT_COLORS[selectedForUI.category] || DEF).fill + "20", color: (CAT_COLORS[selectedForUI.category] || DEF).fill }}>
-                        {(CAT_COLORS[selectedForUI.category] || DEF).label}
+                        style={{ backgroundColor: getCategoryStyle(selectedForUI.category).fill + "20", color: getCategoryStyle(selectedForUI.category).fill }}>
+                        {getCategoryStyle(selectedForUI.category).label}
                       </span>
                     )}
                   </div>

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Header } from "@/components/header";
 import { formatDate } from "@/lib/utils";
+import { getCategoryStyle } from "@/lib/constants";
 
 interface Post {
   postId: string;
@@ -23,12 +24,6 @@ interface Post {
   tags: { name: string; category: string | null; sentiment: string | null }[];
   createdAt: string;
 }
-
-const TAG_COLORS: Record<string, { bg: string; text: string }> = {
-  topic: { bg: "bg-primary/10", text: "text-primary" },
-  entity: { bg: "bg-[#e6f4ea] dark:bg-[#1a8b3f]/20", text: "text-[#1a7431] dark:text-[#4ade80]" },
-  location: { bg: "bg-[#f5a623]/10", text: "text-[#c68400] dark:text-[#ffc94d]" },
-};
 
 export default function PostsPage() {
   return (
@@ -160,7 +155,7 @@ function PostsContent() {
                     {/* Tags + engagement */}
                     <div className="flex items-center gap-3 flex-wrap">
                       {post.tags.slice(0, 4).map((tag) => {
-                        const tc = TAG_COLORS[tag.category || "topic"] || TAG_COLORS.topic;
+                        const tc = getCategoryStyle(tag.category);
                         return (
                           <button
                             key={tag.name}

@@ -19,6 +19,7 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { Header } from "@/components/header";
 import { formatDate, formatChartDate } from "@/lib/utils";
+import { CATEGORY_STYLES, SENTIMENT_STYLES, getSentimentKey, getSentimentColor, calculateAverageSentiment, getCategoryStyle } from "@/lib/constants";
 
 interface TimelinePoint {
   date: string;
@@ -63,18 +64,6 @@ interface TagDetail {
   recentPosts: PostItem[];
   recentNews: NewsItem[];
 }
-
-const CATEGORY_STYLES: Record<string, { bg: string; text: string }> = {
-  topic: { bg: "bg-primary/10", text: "text-primary" },
-  entity: { bg: "bg-[#e6f4ea] dark:bg-[#1a8b3f]/20", text: "text-[#1a7431] dark:text-[#4ade80]" },
-  location: { bg: "bg-[#f5a623]/10", text: "text-[#c68400] dark:text-[#ffc94d]" },
-};
-
-const SENTIMENT_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  positive: { label: "👍 Эерэг", bg: "bg-[#e6f4ea] dark:bg-[#1a8b3f]/25", text: "text-[#1a7431] dark:text-[#4ade80]" },
-  neutral: { label: "💬 Дунд", bg: "bg-secondary", text: "text-muted-foreground" },
-  negative: { label: "👎 Сөрөг", bg: "bg-[#fce8e6] dark:bg-[#c0392b]/25", text: "text-[#a61d17] dark:text-[#ff6b6b]" },
-};
 
 export default function TagDetailClient() {
   const params = useParams();
@@ -127,16 +116,13 @@ export default function TagDetailClient() {
   const totalShares = data.timeline.reduce((s, d) => s + d.shares, 0);
   const totalScore = data.timeline.reduce((s, d) => s + d.score, 0);
 
-  const sentiments = data.timeline.filter((d) => d.sentiment !== null);
-  const avgSentiment = sentiments.length > 0
-    ? sentiments.reduce((s, d) => s + (d.sentiment ?? 0), 0) / sentiments.length
-    : null;
-
-  const sentimentLabel = avgSentiment === null ? "—" : avgSentiment > 0.2 ? "Эерэг" : avgSentiment < -0.2 ? "Сөрөг" : "Дунд";
-  const sentimentColor = avgSentiment === null ? "text-muted-foreground" : avgSentiment > 0.2 ? "text-[#1a8b3f]" : avgSentiment < -0.2 ? "text-[#c0392b]" : "text-muted-foreground";
+  const avgSentiment = calculateAverageSentiment(data.timeline.map((d) => d.sentiment));
+  const sentimentKey = getSentimentKey(avgSentiment);
+  const sentimentLabel = avgSentiment === null ? "—" : SENTIMENT_STYLES[sentimentKey].label.split(" ").slice(1).join(" ");
+  const sentimentColor = avgSentiment === null ? "text-muted-foreground" : SENTIMENT_STYLES[sentimentKey].text;
   const sentimentPct = avgSentiment !== null ? Math.round((avgSentiment + 1) * 50) : 50;
 
-  const cat = CATEGORY_STYLES[data.tag.category || ""] || CATEGORY_STYLES.topic;
+  const cat = getCategoryStyle(data.tag.category);
 
   // Engagement breakdown for pie
   const engagementData = [

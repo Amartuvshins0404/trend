@@ -8,6 +8,7 @@ import {
   type SimulationNodeDatum, type SimulationLinkDatum,
 } from "d3-force";
 import { useTheme } from "@/components/theme-provider";
+import { getSentimentKey, getSentimentColor, SENTIMENT_STYLES } from "@/lib/constants";
 import { MessageSquare, Newspaper } from "lucide-react";
 
 interface BNode extends SimulationNodeDatum {
@@ -111,13 +112,14 @@ export default function BubbleChart() {
 
       // Sentiment color
       let fill: string, border: string;
+      const sentKey = getSentimentKey(node.sentiment);
       if (dimmed) {
         fill = isDark ? "rgba(30,41,59,0.25)" : "rgba(241,245,249,0.4)";
         border = "transparent";
-      } else if (node.sentiment > 0.2) {
+      } else if (sentKey === "positive") {
         fill = isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.1)";
         border = highlighted ? (isDark ? "rgba(52,211,153,0.7)" : "rgba(16,185,129,0.5)") : (isDark ? "rgba(52,211,153,0.3)" : "rgba(16,185,129,0.2)");
-      } else if (node.sentiment < -0.2) {
+      } else if (sentKey === "negative") {
         fill = isDark ? "rgba(239,68,68,0.15)" : "rgba(239,68,68,0.1)";
         border = highlighted ? (isDark ? "rgba(248,113,113,0.7)" : "rgba(239,68,68,0.5)") : (isDark ? "rgba(248,113,113,0.3)" : "rgba(239,68,68,0.2)");
       } else {
@@ -382,8 +384,8 @@ export default function BubbleChart() {
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Сэтгэгдэл</span>
-                  <span className={`font-semibold ${hovered.sentiment > 0.2 ? "text-green-500" : hovered.sentiment < -0.2 ? "text-red-500" : "text-muted-foreground"}`}>
-                    {hovered.sentiment > 0.2 ? "👍 Эерэг" : hovered.sentiment < -0.2 ? "👎 Сөрөг" : "💬 Дунд"}
+                  <span className={`font-semibold ${getSentimentKey(hovered.sentiment) === "positive" ? "text-green-500" : getSentimentKey(hovered.sentiment) === "negative" ? "text-red-500" : "text-muted-foreground"}`}>
+                    {SENTIMENT_STYLES[getSentimentKey(hovered.sentiment)].label}
                   </span>
                 </div>
               </div>
