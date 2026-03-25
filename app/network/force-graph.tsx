@@ -20,8 +20,6 @@ interface GNode extends SimulationNodeDatum {
 }
 interface GLink extends SimulationLinkDatum<GNode> { weight: number }
 
-const MAX_NODES = 150;
-
 export default function ForceGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,75 +102,62 @@ export default function ForceGraph() {
     const viewMinY = -t.y / t.k - padding;
     const viewMaxY = (h - t.y) / t.k + padding;
 
-    // Edges
+    // Edges — batch non-highlighted into single path
+    ctx.beginPath();
+    ctx.strokeStyle = isDark ? "rgba(96,165,250,0.08)" : "rgba(99,102,241,0.1)";
+    ctx.lineWidth = 0.5;
     for (const link of links) {
       const s = link.source as GNode, tg = link.target as GNode;
       if (s.x == null || tg.x == null) continue;
-      // Skip if BOTH endpoints are off-screen
       const sOff = s.x < viewMinX || s.x > viewMaxX || s.y! < viewMinY || s.y! > viewMaxY;
       const tOff = tg.x < viewMinX || tg.x > viewMaxX || tg.y! < viewMinY || tg.y! > viewMaxY;
       if (sOff && tOff) continue;
-      const hi = hov != null && (hov === s.id || hov === tg.id);
-      ctx.beginPath();
+      if (hov != null && (hov === s.id || hov === tg.id)) continue;
       ctx.moveTo(s.x, s.y!);
       ctx.lineTo(tg.x, tg.y!);
-      ctx.strokeStyle = hi
-        ? (isDark ? "rgba(96,165,250,0.5)" : "rgba(59,130,246,0.5)")
-        : (isDark ? "rgba(96,165,250,0.12)" : "rgba(99,102,241,0.15)");
-      ctx.lineWidth = hi ? Math.max(link.weight * 1.5, 3) : Math.max(link.weight, 1.5);
+    }
+    ctx.stroke();
+
+    // Highlighted edges
+    if (hov != null) {
+      ctx.beginPath();
+      ctx.strokeStyle = isDark ? "rgba(96,165,250,0.5)" : "rgba(59,130,246,0.5)";
+      ctx.lineWidth = 2;
+      for (const link of links) {
+        const s = link.source as GNode, tg = link.target as GNode;
+        if (s.x == null || tg.x == null) continue;
+        if (hov !== s.id && hov !== tg.id) continue;
+        ctx.moveTo(s.x, s.y!);
+        ctx.lineTo(tg.x, tg.y!);
+      }
       ctx.stroke();
     }
 
-    // Nodes
+    // Nodes — dots only, no labels. Size = postCount, color = category.
     for (const node of nodes) {
       if (node.x == null) continue;
-      if (node.x! < viewMinX || node.x! > viewMaxX || node.y! < viewMinY || node.y! > viewMaxY) continue;
+      if (node.x < viewMinX || node.x > viewMaxX || node.y! < viewMinY || node.y! > viewMaxY) continue;
       const c = getCategoryStyle(node.category);
       const active = hov === node.id || sel?.id === node.id;
       const r = node.radius;
 
-      // Outer glow
       if (active) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y!, r + 10, 0, Math.PI * 2);
-        ctx.fillStyle = c.fill + "20";
+        ctx.arc(node.x, node.y!, r + 6, 0, Math.PI * 2);
+        ctx.fillStyle = c.fill + "25";
         ctx.fill();
       }
 
-      // Filled circle
       ctx.beginPath();
       ctx.arc(node.x, node.y!, r, 0, Math.PI * 2);
-      ctx.fillStyle = active ? c.fill + "30" : c.fill + (isDark ? "20" : "15");
-      ctx.fill();
-      ctx.strokeStyle = active ? c.fill : c.fill + (isDark ? "50" : "40");
-      ctx.lineWidth = active ? 2.5 : 1.5;
-      ctx.stroke();
-
-      // Center dot
-      ctx.beginPath();
-      ctx.arc(node.x, node.y!, Math.max(3, r * 0.25), 0, Math.PI * 2);
-      ctx.fillStyle = c.fill;
+      ctx.fillStyle = active ? c.fill + "90" : c.fill + (isDark ? "60" : "50");
       ctx.fill();
 
-      // Label
-      const fs = Math.max(10, Math.min(14, r * 0.5));
-      ctx.font = `${active ? 600 : 500} ${fs}px system-ui, -apple-system, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      const text = node.name;
-      const tw = ctx.measureText(text).width;
-      const tx = node.x, ty = node.y! + r + 6;
-      // Label pill
-      ctx.fillStyle = isDark ? "rgba(15,23,42,0.9)" : "rgba(255,255,255,0.92)";
-      const pad = 5;
-      ctx.beginPath();
-      const bw = tw + pad * 2, bh = fs + pad;
-      ctx.roundRect(tx - bw / 2, ty - 2, bw, bh, 4);
-      ctx.fill();
-      ctx.fillStyle = active
-        ? (isDark ? "#e2e8f0" : "#0f172a")
-        : (isDark ? "#94a3b8" : "#374151");
-      ctx.fillText(text, tx, ty + 1);
+      if (active) {
+        ctx.strokeStyle = c.fill;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
     }
 
     ctx.restore();
@@ -194,9 +179,8 @@ export default function ForceGraph() {
     sizeRef.current = { w, h };
     transformRef.current = { x: w / 2, y: h / 2, k: 0.85 };
 
-    const sorted = [...data.nodes].sort((a, b) => b.postCount - a.postCount).slice(0, MAX_NODES);
-    const maxP = Math.max(...sorted.map((n) => n.postCount), 1);
-    const nodes: GNode[] = sorted.map((n) => ({ ...n, radius: 10 + (n.postCount / maxP) * 30 }));
+    const maxP = Math.max(...data.nodes.map((n) => n.postCount), 1);
+    const nodes: GNode[] = data.nodes.map((n) => ({ ...n, radius: 4 + (n.postCount / maxP) * 26 }));
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const links: GLink[] = data.edges
       .filter((e) => nodeMap.has(e.source) && nodeMap.has(e.target))
@@ -211,12 +195,15 @@ export default function ForceGraph() {
 
     settledRef.current = false;
 
+    const nodeCount = nodes.length;
+    const chargeStrength = nodeCount > 1000 ? -30 : nodeCount > 300 ? -80 : -250;
+
     const sim = forceSimulation<GNode>(nodes)
-      .force("link", forceLink<GNode, GLink>(links).id((d) => d.id).distance(120).strength(0.2))
-      .force("charge", forceManyBody().strength(-250))
+      .force("link", forceLink<GNode, GLink>(links).id((d) => d.id).distance(nodeCount > 1000 ? 40 : 120).strength(0.1))
+      .force("charge", forceManyBody().strength(chargeStrength).distanceMax(nodeCount > 1000 ? 200 : 500))
       .force("center", forceCenter(0, 0))
-      .force("x", forceX(0).strength(0.03))
-      .force("y", forceY(0).strength(0.03))
+      .force("x", forceX(0).strength(0.05))
+      .force("y", forceY(0).strength(0.05))
       .force("collide", forceCollide<GNode>().radius((d) => d.radius + 8).strength(0.7))
       .alphaDecay(0.05)
       .alphaMin(0.01)
