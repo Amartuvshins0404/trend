@@ -8,8 +8,16 @@ import {
   type SimulationNodeDatum, type SimulationLinkDatum,
 } from "d3-force";
 import * as THREE from "three";
-import { getCategoryStyle } from "@/lib/constants";
 import { ZoomIn, ZoomOut, Maximize2, GripHorizontal } from "lucide-react";
+
+const CAT_STYLES: Record<string, { fill: string; label: string }> = {
+  topic:    { fill: "#3b82f6", label: "сэдэв" },
+  entity:   { fill: "#31a24c", label: "нэр" },
+  location: { fill: "#f5a623", label: "газар" },
+};
+function getCategoryStyle(category: string | null) {
+  return CAT_STYLES[category || ""] || CAT_STYLES.topic;
+}
 
 interface ApiNode { id: number; name: string; category: string | null; postCount: number }
 interface ApiEdge { source: number; target: number; weight: number }
