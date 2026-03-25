@@ -2,12 +2,6 @@ import { NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
 
-const API_MODE = process.env.API_MODE || "mock";
-const API_URL: Record<string, string | undefined> = {
-  prod: process.env.API_URL_PROD,
-  test: process.env.API_URL_TEST,
-};
-
 const MOCK_DIR = path.join(process.cwd(), "mock");
 
 const MOCK_MAP: Record<string, string> = {
@@ -22,40 +16,13 @@ const MOCK_MAP: Record<string, string> = {
   "/api/health": "",
 };
 
-async function proxyToBackend(request: NextRequest, baseUrl: string): Promise<Response> {
-  const pathname = request.nextUrl.pathname;
-  const search = request.nextUrl.search;
-  const url = `${baseUrl}${pathname}${search}`;
-
-  const res = await fetch(url, {
-    headers: { "Accept": "application/json" },
-  });
-
-  return new Response(res.body, {
-    status: res.status,
-    headers: { "Content-Type": res.headers.get("Content-Type") || "application/json" },
-  });
-}
-
 export async function GET(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Health check
   if (pathname === "/api/health") {
-    return Response.json({ status: "ok", mode: API_MODE });
+    return Response.json({ status: "ok", mode: "mock" });
   }
-
-  // Proxy to backend when mode is prod or test
-  const baseUrl = API_URL[API_MODE];
-  if (baseUrl) {
-    try {
-      return await proxyToBackend(request, baseUrl);
-    } catch {
-      // Backend unreachable — fall through to mock
-    }
-  }
-
-  // Mock fallback
 
   // Tag detail — return mock timeline-like data
   if (pathname.startsWith("/api/trends/tag/")) {
@@ -81,5 +48,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return Response.json({ error: "Not found", path: pathname, mode: API_MODE }, { status: 404 });
+  return Response.json({ error: "Not found", path: pathname, mode: "mock" }, { status: 404 });
 }
