@@ -37,13 +37,19 @@ Open [localhost:3000](http://localhost:3000). The app runs with mock data, no ba
 
 ### Connect to a real backend
 
-Set `API_URL` in `.env.local` to point to your API server:
+Copy `.env.sample` to `.env.local` and set `API_MODE`:
 
-```env
-API_URL=http://localhost:8001
+```bash
+cp .env.sample .env.local
 ```
 
-Then replace `app/api/[...path]/route.ts` with a proxy to your backend.
+| `API_MODE` | Description |
+|------------|-------------|
+| `mock` | Serves from local `mock/*.json` files (default, no backend needed) |
+| `test` | Proxies to `API_URL_TEST` (local backend) |
+| `prod` | Proxies to `API_URL_PROD` (production API) |
+
+If the backend is unreachable, requests fall back to mock data automatically.
 
 ## Project Structure
 

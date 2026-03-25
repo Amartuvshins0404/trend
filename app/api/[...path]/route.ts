@@ -2,6 +2,12 @@ import { NextRequest } from "next/server";
 import fs from "fs";
 import path from "path";
 
+const API_MODE = process.env.API_MODE || "mock"; // "mock" | "test" | "prod"
+const API_URLS: Record<string, string | undefined> = {
+  test: process.env.API_URL_TEST,
+  prod: process.env.API_URL_PROD,
+};
+const API_URL = API_URLS[API_MODE];
 const MOCK_DIR = path.join(process.cwd(), "mock");
 
 const MOCK_MAP: Record<string, string> = {
@@ -16,15 +22,31 @@ const MOCK_MAP: Record<string, string> = {
   "/api/health": "",
 };
 
-export async function GET(request: NextRequest) {
+async function proxyToBackend(request: NextRequest): Promise<Response> {
+  const pathname = request.nextUrl.pathname;
+  const search = request.nextUrl.search;
+  const url = `${API_URL}${pathname}${search}`;
+
+  const res = await fetch(url, {
+    method: request.method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await res.json();
+  return Response.json(data, { status: res.status });
+}
+
+function serveMock(request: NextRequest): Response {
   const pathname = request.nextUrl.pathname;
 
   // Health check
   if (pathname === "/api/health") {
-    return Response.json({ status: "ok", mode: "mock" });
+    return Response.json({ status: "ok", mode: API_MODE });
   }
 
-  // Tag detail — return mock timeline-like data
+  // Tag detail
   if (pathname.startsWith("/api/trends/tag/")) {
     const topData = JSON.parse(fs.readFileSync(path.join(MOCK_DIR, "mock_top.json"), "utf-8"));
     const tag = topData[0] || { id: 1, name: "mock", category: "topic" };
@@ -49,4 +71,16 @@ export async function GET(request: NextRequest) {
   }
 
   return Response.json({ error: "Not found", path: pathname, mode: "mock" }, { status: 404 });
+}
+
+export async function GET(request: NextRequest) {
+  if (API_URL) {
+    try {
+      return await proxyToBackend(request);
+    } catch {
+      // Fall back to mock data if backend is unreachable
+      return serveMock(request);
+    }
+  }
+  return serveMock(request);
 }
