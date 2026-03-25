@@ -12,10 +12,10 @@ export default function NetworkPage() {
   const [view, setView] = useState<"bubble" | "force">("bubble");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen overflow-hidden bg-background flex flex-col">
       <Header />
-      <main className="px-2 sm:px-4 py-2">
-        <div className="flex items-center gap-3 mb-2">
+      <main className="px-2 sm:px-4 py-2 flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 mb-2 shrink-0">
           <div className="flex items-center gap-0.5 bg-secondary rounded-full p-0.5">
             <button
               onClick={() => setView("bubble")}
@@ -52,7 +52,9 @@ export default function NetworkPage() {
           </div>
         </div>
 
-        {view === "bubble" ? <BubbleChart /> : <ForceGraph />}
+        <div className="flex-1 min-h-0">
+          {view === "bubble" ? <BubbleChart /> : <ForceGraph />}
+        </div>
       </main>
     </div>
   );
